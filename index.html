@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Troki - Trocas Online</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+body{font-family:Arial;background:#0f1220;color:white;margin:0;padding:0}
+header{background:#7c3aed;padding:15px;text-align:center;font-size:22px;font-weight:bold}
+button{background:#7c3aed;border:none;padding:10px 15px;border-radius:6px;color:white;font-weight:bold;cursor:pointer}
+input,textarea{width:100%;padding:8px;border-radius:5px;border:none;margin:5px 0}
+.card{background:#1b1f3a;margin:10px;padding:10px;border-radius:8px}
+.hidden{display:none}
+#chat{position:fixed;bottom:0;left:0;right:0;background:#1b1f3a;padding:10px}
+#messages{max-height:200px;overflow-y:auto}
+.msg{background:#7c3aed;padding:6px;margin:4px;border-radius:5px}
+</style>
+</head>
+<body>
+<header>TROKI 🔁</header>
+<div id="login">
+  <button onclick="login()">Entrar com Google</button>
+</div>
+<div id="app" class="hidden">
+  <button onclick="showCreate()">➕ Criar anúncio</button>
+  <div id="create" class="hidden">
+    <input id="title" placeholder="Título">
+    <textarea id="have" placeholder="O que você tem"></textarea>
+    <textarea id="want" placeholder="O que você quer"></textarea>
+    <button onclick="createAd()">Publicar</button>
+  </div>
+  <div id="ads"></div>
+</div>
+
+<div id="chat" class="hidden">
+  <div id="messages"></div>
+  <input id="msg" placeholder="Mensagem">
+  <button onclick="sendMsg()">Enviar</button>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC1Yj4ggHV4xiQ-3ThH0moFaB2ceST2OXA",
+  authDomain: "troky-123.firebaseapp.com",
+  projectId: "troky-123",
+  storageBucket: "troky-123.firebasestorage.app",
+  messagingSenderId: "460102022777",
+  appId: "1:460102022777:web:af08bcbce69659df0886a8",
+  measurementId: "G-E31RQPQCPD"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let user=null, chatId=null;
+
+function login(){
+  const provider=new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
+}
+
+auth.onAuthStateChanged(u=>{
+  if(u){user=u;loginDiv.style.display='none';app.classList.remove('hidden');loadAds();}
+});
+
+function showCreate(){create.classList.toggle('hidden')}
+
+function createAd(){
+  db.collection('ads').add({
+    title:title.value,
+    have:have.value,
+    want:want.value,
+    uid:user.uid
+  });
+}
+
+function loadAds(){
+  db.collection('ads').onSnapshot(s=>{
+    ads.innerHTML='';
+    s.forEach(d=>{
+      const a=d.data();
+      if(a.uid!==user.uid){
+        ads.innerHTML+=`<div class='card'><b>${a.title}</b><br>Tenho: ${a.have}<br>Quero: ${a.want}<br><button onclick="openChat('${d.id}')">Conversar</button></div>`;
+      }
+    })
+  })
+}
+
+function openChat(id){
+  chatId=id;
+  chat.classList.remove('hidden');
+  db.collection('chats').doc(id).collection('msgs').orderBy('t').onSnapshot(s=>{
+    messages.innerHTML='';
+    s.forEach(m=>{
+      messages.innerHTML+=`<div class='msg'>${m.data().text}</div>`;
+    })
+  })
+}
+
+function sendMsg(){
+  if(!msg.value)return;
+  db.collection('chats').doc(chatId).collection('msgs').add({text:msg.value,t:Date.now()});
+  msg.value='';
+}
+</script>
+</body>
+</html>
